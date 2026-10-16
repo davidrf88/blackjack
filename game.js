@@ -2,12 +2,26 @@
 'use strict';
 
 // ---------- constants ----------
-const STAGE_W = 1280, STAGE_H = 820;
 const CARD_W = 84, CARD_H = 114;
-const SHOE = { x: 1010, y: 120 };
-const DISCARD = { x: 190, y: 120 };
-const TRAY = { x: 640, y: 108 };
-const DEALER_HAND = { x: 640, y: 190 };
+// Two table layouts: 'full' for desktop, 'compact' for phones in landscape
+// (controls move to side columns and the table is squeezed so everything draws bigger).
+// Positions of the felt, shoe, etc. are mirrored in style.css under body.compact.
+const LAYOUTS = {
+  full: {
+    w: 1280, h: 820,
+    shoe: { x: 1010, y: 120 }, discard: { x: 190, y: 120 }, tray: { x: 640, y: 108 }, dealerHand: { x: 640, y: 190 },
+    betDy: 90, panelDy: 128, youPanelDy: 140, plateDy: 245, youPlateDy: 160,
+    seats: { mia: [1060, 290], tony: [860, 350], you: [640, 385], vera: [420, 350], lou: [220, 290] },
+  },
+  compact: {
+    w: 1280, h: 580,
+    shoe: { x: 985, y: 80 }, discard: { x: 190, y: 80 }, tray: { x: 640, y: 76 }, dealerHand: { x: 640, y: 148 },
+    betDy: 80, panelDy: 112, youPanelDy: 122, plateDy: 202, youPlateDy: 142,
+    seats: { mia: [1040, 265], tony: [850, 300], you: [640, 322], vera: [430, 300], lou: [240, 265] },
+  },
+};
+let L = LAYOUTS.full;
+const SHOE = { ...L.shoe }, DISCARD = { ...L.discard }, TRAY = { ...L.tray }, DEALER_HAND = { ...L.dealerHand };
 const BACK = 'assets/cards/cardBack_red2.png';
 const SUITS = ['Clubs', 'Diamonds', 'Hearts', 'Spades'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -24,13 +38,7 @@ const MOOD_LIST = ['neutral', 'happy', 'ecstatic', 'sad', 'shocked', 'thinking',
 const ADVICE = { hit: 'hit', stand: 'stand', double: 'double down', split: 'split' };
 
 // Seats in play order (dealer's left = screen right goes first).
-const SEAT_LAYOUT = [
-  { key: 'mia', x: 1060, y: 290 },
-  { key: 'tony', x: 860, y: 350 },
-  { key: 'you', x: 640, y: 385 },
-  { key: 'vera', x: 420, y: 350 },
-  { key: 'lou', x: 220, y: 290 },
-];
+const SEAT_ORDER = ['mia', 'tony', 'you', 'vera', 'lou'];
 
 const SFX = {
   slide: ['card-slide-1', 'card-slide-2'],
@@ -165,25 +173,21 @@ function npcDecide(style, hand, up, canD, canS) {
 }
 
 // ---------- seats & UI construction ----------
-function buildSeat(layout) {
-  const isYou = layout.key === 'you';
-  const npc = isYou ? null : NPCS[layout.key];
+function buildSeat(key) {
+  const isYou = key === 'you';
+  const npc = isYou ? null : NPCS[key];
   const seat = {
-    key: layout.key, x: layout.x, y: layout.y, isYou, npc,
+    key, x: 0, y: 0, isYou, npc,
     name: isYou ? 'You' : npc.name,
     bankroll: isYou ? START_BANKROLL : npc.bankroll,
     bet: 0, hands: [], timers: {},
   };
   // bet circle
   seat.spot = div('betspot', layer);
-  seat.spot.style.left = seat.x + 'px';
-  seat.spot.style.top = seat.y + 90 + 'px';
   seat.stack = div('stack', seat.spot);
   seat.betLabel = div('betlabel', seat.spot);
   // player panel
   seat.panel = div('seat' + (isYou ? ' you' : ''), stage);
-  seat.panel.style.left = seat.x + 'px';
-  seat.panel.style.top = seat.y + (isYou ? 140 : 128) + 'px';
   seat.bubble = div('bubble', seat.panel);
   if (!isYou) {
     const av = div('avatar', seat.panel);
@@ -195,9 +199,18 @@ function buildSeat(layout) {
   const plate = div('plate', seat.panel);
   div('nm', plate).textContent = seat.name;
   seat.bankLabel = div('bk', plate);
-  seat.plateY = seat.y + (isYou ? 160 : 245);
+  placeSeat(seat);
   renderSeat(seat);
   return seat;
+}
+
+function placeSeat(seat) {
+  [seat.x, seat.y] = L.seats[seat.key];
+  seat.spot.style.left = seat.x + 'px';
+  seat.spot.style.top = seat.y + L.betDy + 'px';
+  seat.panel.style.left = seat.x + 'px';
+  seat.panel.style.top = seat.y + (seat.isYou ? L.youPanelDy : L.panelDy) + 'px';
+  seat.plateY = seat.y + (seat.isYou ? L.youPlateDy : L.plateDy);
 }
 
 function buildDealer() {
@@ -355,7 +368,7 @@ async function flyChips(amount, from, to) {
   f.remove();
 }
 
-const spotPos = s => ({ x: s.x, y: s.y + 90 });
+const spotPos = s => ({ x: s.x, y: s.y + L.betDy });
 const platePos = s => ({ x: s.x, y: s.plateY });
 
 // ---------- talking & faces ----------
@@ -883,10 +896,23 @@ async function finishRound() {
 }
 
 // ---------- setup ----------
+function applyLayout(name) {
+  if (L === LAYOUTS[name] && stage.style.width) return;
+  L = LAYOUTS[name];
+  document.body.classList.toggle('compact', name === 'compact');
+  stage.style.width = L.w + 'px';
+  stage.style.height = L.h + 'px';
+  Object.assign(SHOE, L.shoe); Object.assign(DISCARD, L.discard);
+  Object.assign(TRAY, L.tray); Object.assign(DEALER_HAND, L.dealerHand);
+  for (const s of state.seats) { placeSeat(s); if (s.hands.length) layoutOwner(s); }
+  if (state.dealer && state.dealer.hand) layoutOwner('dealer');
+}
+
 function fit() {
   const vv = window.visualViewport;
   const w = vv ? vv.width : window.innerWidth, h = vv ? vv.height : window.innerHeight;
-  const s = Math.min(w / STAGE_W, h / STAGE_H);
+  applyLayout(isTouch && w > h ? 'compact' : 'full');
+  const s = Math.min(w / L.w, h / L.h);
   stage.style.transform = `translate(-50%, -50%) scale(${s})`;
 }
 
@@ -959,7 +985,7 @@ function init() {
   buildShoe();
   buildChipRack();
   state.dealer = buildDealer();
-  state.seats = SEAT_LAYOUT.map(buildSeat);
+  state.seats = SEAT_ORDER.map(buildSeat);
   state.shoe = new Shoe(DECKS);
 
   $('btn-deal').onclick = playRound;
