@@ -5,7 +5,13 @@ html, body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   color: #fff;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
+body { position: fixed; inset: 0; }
 
 #stage {
   position: absolute; left: 50%; top: 50%;
@@ -192,3 +198,47 @@ kbd { font: 11px monospace; opacity: .6; margin-left: 4px; }
 }
 .chipbtn:hover:not(:disabled) { transform: translateY(-3px); }
 .chipbtn.light { color: #222; text-shadow: none; }
+
+/* ---------- mobile: overlays ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(10, 6, 3, .92); padding: 20px;
+}
+.overlay .panel {
+  max-width: 420px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  background: linear-gradient(#1d6b3c, #0e4425); border: 3px solid #b8913e; border-radius: 18px;
+  padding: 24px 28px; box-shadow: 0 10px 40px rgba(0,0,0,.7);
+}
+.overlay p { margin: 0; color: #e8dcc0; font-size: 16px; }
+.overlay .tip { font-size: 14px; color: #ffe08a; }
+.ov-title { font: 700 26px Georgia, serif; color: #ffd66b; }
+button.big { font-size: 20px; padding: 14px 28px; }
+
+#rotate { display: none; }
+#fs-prompt { z-index: 1001; }
+#leave-prompt { z-index: 1002; }
+#rotate .phone {
+  width: 46px; height: 80px; border: 4px solid #ffd66b; border-radius: 9px; position: relative;
+  animation: turn 2.2s ease-in-out infinite;
+}
+#rotate .phone::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #ffd66b; }
+@keyframes turn { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate { display: flex; }
+}
+
+/* ---------- mobile: bigger touch targets (sizes are in stage px, the stage is scaled down) ---------- */
+@media (pointer: coarse) {
+  #controls { height: 132px; grid-template-columns: 210px 1fr 400px; padding: 0 16px; }
+  #controls button:not(.chipbtn) { font-size: 22px; padding: 16px 22px; }
+  #controls button.ghost { font-size: 19px; }
+  kbd { display: none; }
+  .chipbtn { width: 88px; height: 88px; font-size: 21px !important; }
+  .stat b { font-size: 30px; }
+  .stat span { font-size: 14px; }
+  #topbar button.small { font-size: 16px; padding: 8px 14px; }
+  .bubble { font-size: 17px; max-width: 240px; }
+  .plate .nm { font-size: 15px; }
+  .plate .bk { font-size: 14px; }
+}

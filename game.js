@@ -884,8 +884,69 @@ async function finishRound() {
 
 // ---------- setup ----------
 function fit() {
-  const s = Math.min(window.innerWidth / STAGE_W, window.innerHeight / STAGE_H);
+  const vv = window.visualViewport;
+  const w = vv ? vv.width : window.innerWidth, h = vv ? vv.height : window.innerHeight;
+  const s = Math.min(w / STAGE_W, h / STAGE_H);
   stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+}
+
+// ---------- mobile: fullscreen, landscape, and not leaving by accident ----------
+const isTouch = matchMedia('(pointer: coarse)').matches;
+const root = document.documentElement;
+const canFullscreen = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+const isInstalledApp = matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+
+async function enterFullscreen() {
+  try {
+    if (root.requestFullscreen) await root.requestFullscreen({ navigationUI: 'hide' });
+    else root.webkitRequestFullscreen();
+  } catch (e) { /* refused: the game still works windowed */ }
+  try { await screen.orientation.lock('landscape'); } catch (e) { /* unsupported: the rotate overlay covers it */ }
+}
+
+function setupFullscreen() {
+  if (!isTouch || isInstalledApp) return;
+  const prompt = $('fs-prompt');
+  if (canFullscreen) {
+    $('btn-go-fs').onclick = () => { prompt.classList.add('hidden'); enterFullscreen(); };
+    $('btn-fullscreen').onclick = enterFullscreen;
+    $('btn-fullscreen').classList.remove('hidden');
+  } else {
+    // iPhone Safari has no fullscreen API; adding to the home screen is the way to get it
+    $('btn-go-fs').textContent = 'Play';
+    $('btn-skip-fs').classList.add('hidden');
+    $('ios-tip').classList.remove('hidden');
+    $('btn-go-fs').onclick = () => prompt.classList.add('hidden');
+  }
+  $('btn-skip-fs').onclick = () => prompt.classList.add('hidden');
+  prompt.classList.remove('hidden');
+  const onChange = () => { $('btn-fullscreen').classList.toggle('hidden', isFullscreen()); setTimeout(fit, 150); };
+  document.addEventListener('fullscreenchange', onChange);
+  document.addEventListener('webkitfullscreenchange', onChange);
+}
+
+function setupLeaveGuard() {
+  // An extra history entry catches the back button / back swipe so we can ask first.
+  // Browsers ignore entries pushed before the user interacts, so arm it on the first tap or key.
+  const arm = () => {
+    history.pushState({ table: true }, '');
+    ['click', 'keydown', 'touchend'].forEach(ev => document.removeEventListener(ev, arm, true));
+  };
+  ['click', 'keydown', 'touchend'].forEach(ev => document.addEventListener(ev, arm, true));
+  window.addEventListener('popstate', () => {
+    if (state.leaving) return;
+    history.pushState({ table: true }, '');
+    $('leave-prompt').classList.remove('hidden');
+  });
+  $('btn-stay').onclick = () => $('leave-prompt').classList.add('hidden');
+  $('btn-leave').onclick = () => { state.leaving = true; history.go(-2); };
+  // refresh / closing the tab / typing a new address
+  window.addEventListener('beforeunload', e => {
+    if (state.leaving) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
 }
 
 function setSpeed(fast) {
@@ -927,6 +988,10 @@ function init() {
 
   if (location.search.includes('debug')) window.__bj = state;
   window.addEventListener('resize', fit);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', () => setTimeout(fit, 200));
+  setupFullscreen();
+  setupLeaveGuard();
   fit();
   startBetting();
 }
