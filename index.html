@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blackjack Table</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <div id="felt">
+    <svg class="felt-text" viewBox="0 0 1220 560" aria-hidden="true">
+      <path id="arc1" d="M 250 200 Q 610 400 970 200" fill="none"/>
+      <path id="arc2" d="M 330 240 Q 610 410 890 240" fill="none"/>
+      <text class="arc-big"><textPath href="#arc1" startOffset="50%" text-anchor="middle">BLACKJACK PAYS 3 TO 2</textPath></text>
+      <text class="arc-small"><textPath href="#arc2" startOffset="50%" text-anchor="middle">Dealer stands on all 17s</textPath></text>
+    </svg>
+  </div>
+  <div id="tray"></div>
+  <div id="shoe"></div>
+  <div id="discard"></div>
+  <div id="layer"></div>
+  <div id="banner"></div>
+
+  <div id="topbar">
+    <button id="btn-sound" class="small">Sound: On</button>
+    <button id="btn-fast" class="small">Speed: Normal</button>
+  </div>
+
+  <div id="controls">
+    <div class="ctl-left">
+      <div class="stat"><span>Bankroll</span><b id="ui-bankroll">$1,000</b></div>
+      <div class="stat"><span>Bet</span><b id="ui-bet">$0</b></div>
+    </div>
+    <div class="ctl-mid">
+      <div id="bet-actions" class="row">
+        <button id="btn-clear">Clear</button>
+        <button id="btn-rebet">Rebet</button>
+        <button id="btn-deal" class="primary">Deal</button>
+      </div>
+      <div id="play-actions" class="row hidden">
+        <button id="btn-hit" class="primary">Hit <kbd>H</kbd></button>
+        <button id="btn-stand">Stand <kbd>S</kbd></button>
+        <button id="btn-double">Double <kbd>D</kbd></button>
+        <button id="btn-split">Split <kbd>P</kbd></button>
+        <button id="btn-ask" class="ghost">Ask Lou</button>
+      </div>
+      <div id="wait-msg" class="row hidden"></div>
+    </div>
+    <div class="ctl-right" id="chip-rack"></div>
+  </div>
+</div>
+<script src="npcs.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
