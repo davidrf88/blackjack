@@ -13,6 +13,8 @@ You sit in the middle seat with four NPCs at the table. Each one plays and bets 
 
 Rules: 6-deck shoe reshuffled at 75% penetration, dealer stands on all 17s, blackjack pays 3:2, you can double on any first two cards (including after a split), split up to 4 hands, and split aces get one card each.
 
+Your bankroll, the NPCs' bankrolls, your last bet and your sound/speed settings are saved in the browser, so they're still there when you come back. If you leave in the middle of a hand, the bet on the table is lost. Chips you've placed but not dealt yet are returned.
+
 Controls: click chips to bet, then **Deal** (or press Enter). During your turn, press **H**it, **S**tand, **D**ouble or s**P**lit.
 
 ## Asset credits

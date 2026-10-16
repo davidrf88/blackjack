@@ -289,6 +289,42 @@ function renderSeat(seat) {
   seat.betLabel.textContent = amt ? fmt(amt) : '';
   seat.bankLabel.textContent = fmt(seat.bankroll);
   if (seat.isYou) updateUI();
+  saveProgress();
+}
+
+// ---------- saving between visits ----------
+// Bankrolls and settings live in localStorage. Chips placed but not dealt yet count as yours;
+// once cards are dealt the bet is on the table, so leaving mid-hand forfeits it (like a real casino).
+// Winnings count as soon as the hand is settled, even if the chip animation hasn't finished.
+const SAVE_KEY = 'blackjack-save-v1';
+
+function savedBankroll(seat) {
+  return seat.bankroll + (seat.owed || 0) + (state.phase === 'betting' ? seat.bet : 0);
+}
+
+function saveProgress() {
+  if (!state.loaded) return;
+  const data = {
+    bankrolls: Object.fromEntries(state.seats.map(s => [s.key, savedBankroll(s)])),
+    lastBet: state.lastBet, sound: state.sound, fast: state.speed !== 1,
+  };
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) { /* private mode etc: just don't save */ }
+}
+
+function loadProgress() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { /* ignore corrupt or blocked storage */ }
+  if (data && data.bankrolls) {
+    for (const s of state.seats) {
+      const b = data.bankrolls[s.key];
+      if (typeof b === 'number' && isFinite(b) && b >= 0) s.bankroll = b;
+    }
+    state.lastBet = data.lastBet || 0;
+    if (data.sound === false) { state.sound = false; $('btn-sound').textContent = 'Sound: Off'; }
+    if (data.fast) setSpeed(true);
+  }
+  state.loaded = true;
+  state.seats.forEach(renderSeat);
 }
 
 function layoutHand(hand, cx, cy, off) {
@@ -620,6 +656,7 @@ async function playRound() {
   state.lastBet = p.bet;
   showActions('wait', 'Dealing...');
   updateUI();
+  saveProgress();
 
   const active = state.seats.filter(s => s.bet > 0);
   active.forEach(s => { s.hands = [newHand(s, s.bet)]; });
@@ -839,16 +876,20 @@ async function settleHand(seat, hand, result, delay = 0) {
     return;
   }
   if (result === 'push') {
+    seat.owed = (seat.owed || 0) + hand.bet;
     hand.settled = true; hand.net = 0; hand.result = 'push';
     setResultBadge(hand, 'Push', 'push');
     renderSeat(seat);
     await flyChips(hand.bet, spot, plate);
     seat.bankroll += hand.bet;
+    seat.owed -= hand.bet;
     renderSeat(seat);
     return;
   }
   const pay = result === 'bj' ? hand.bet * 1.5 : hand.bet;
   hand.net = pay; hand.result = result;
+  seat.owed = (seat.owed || 0) + hand.bet + pay;
+  saveProgress();
   setResultBadge(hand, (result === 'bj' ? 'Blackjack +' : 'Win +') + fmt(pay), result === 'bj' ? 'bj' : 'win');
   floatText(spot.x, spot.y - 30, '+' + fmt(pay), 'pos');
   await flyChips(pay, TRAY, spot);
@@ -856,6 +897,7 @@ async function settleHand(seat, hand, result, delay = 0) {
   renderSeat(seat);
   await flyChips(hand.bet + pay, spot, plate);
   seat.bankroll += hand.bet + pay;
+  seat.owed -= hand.bet + pay;
   renderSeat(seat);
 }
 
@@ -979,6 +1021,7 @@ function setSpeed(fast) {
   state.speed = fast ? 0.5 : 1;
   document.documentElement.style.setProperty('--t', fast ? '.22s' : '.38s');
   $('btn-fast').textContent = 'Speed: ' + (fast ? 'Fast' : 'Normal');
+  saveProgress();
 }
 
 function init() {
@@ -987,6 +1030,7 @@ function init() {
   state.dealer = buildDealer();
   state.seats = SEAT_ORDER.map(buildSeat);
   state.shoe = new Shoe(DECKS);
+  loadProgress();
 
   $('btn-deal').onclick = playRound;
   $('btn-clear').onclick = clearPlayerBet;
@@ -998,7 +1042,7 @@ function init() {
     const { canD, canS } = setPlayButtons(h, p);
     react(seatByKey('lou'), 'advise', { advice: ADVICE[basicStrategy(h, dealerUp(), canD, canS)] });
   };
-  $('btn-sound').onclick = () => { state.sound = !state.sound; $('btn-sound').textContent = 'Sound: ' + (state.sound ? 'On' : 'Off'); };
+  $('btn-sound').onclick = () => { state.sound = !state.sound; $('btn-sound').textContent = 'Sound: ' + (state.sound ? 'On' : 'Off'); saveProgress(); };
   $('btn-fast').onclick = () => setSpeed(state.speed === 1);
 
   document.addEventListener('keydown', e => {
